@@ -49,7 +49,7 @@ function initVimeoBGVideo() {
     // Looks like: https://player.vimeo.com/video/1019191082
     const vimeoVideoID = vimeoElement.getAttribute("data-vimeo-video-id");
     if (!vimeoVideoID) return;
-    const vimeoVideoURL = `https://player.vimeo.com/video/${vimeoVideoID}?api=1&background=1&autoplay=0&loop=1&muted=1`;
+    const vimeoVideoURL = `https://player.vimeo.com/video/${vimeoVideoID}?api=1&background=1&autoplay=1&loop=1&muted=1`;
     vimeoElement.querySelector("iframe").setAttribute("src", vimeoVideoURL);
 
     // Assign an ID to each element
@@ -59,9 +59,15 @@ function initVimeoBGVideo() {
     const iframeID = vimeoElement.id;
     const player = new Vimeo.Player(iframeID);
 
-    let videoAspectRatio;
+    player.setVolume(0);
+
+    player.on("bufferend", function () {
+      vimeoElement.setAttribute("data-vimeo-activated", "true");
+      vimeoElement.setAttribute("data-vimeo-loaded", "true");
+    });
 
     // Update Aspect Ratio if [data-vimeo-update-size="true"]
+    let videoAspectRatio;
     if (vimeoElement.getAttribute("data-vimeo-update-size") === "true") {
       player.getVideoWidth().then(function (width) {
         player.getVideoHeight().then(function (height) {
@@ -87,7 +93,6 @@ function initVimeoBGVideo() {
         }
       }
     }
-
     // Adjust video sizing initially
     if (vimeoElement.getAttribute("data-vimeo-update-size") === "true") {
       adjustVideoSizing();
@@ -99,71 +104,8 @@ function initVimeoBGVideo() {
     } else {
       adjustVideoSizing();
     }
-
     // Adjust video sizing on resize
     window.addEventListener("resize", adjustVideoSizing);
-
-    // Loaded
-    player.on("play", function () {
-      vimeoElement.setAttribute("data-vimeo-loaded", "true");
-    });
-
-    // Autoplay
-    if (vimeoElement.getAttribute("data-vimeo-autoplay") === "false") {
-      // Autoplay = false
-      player.pause();
-    } else {
-      // Autoplay = true
-      // If paused-by-user === false, do scroll-based autoplay
-      if (vimeoElement.getAttribute("data-vimeo-paused-by-user") === "false") {
-        function checkVisibility() {
-          const rect = vimeoElement.getBoundingClientRect();
-          const inView = rect.top < window.innerHeight && rect.bottom > 0;
-          inView ? vimeoPlayerPlay() : vimeoPlayerPause();
-        }
-
-        // Initial check
-        checkVisibility();
-
-        // Handle scroll
-        window.addEventListener("scroll", checkVisibility);
-      }
-    }
-
-    // Function: Play Video
-    function vimeoPlayerPlay() {
-      vimeoElement.setAttribute("data-vimeo-activated", "true");
-      vimeoElement.setAttribute("data-vimeo-playing", "true");
-      player.play();
-    }
-
-    // Function: Pause Video
-    function vimeoPlayerPause() {
-      vimeoElement.setAttribute("data-vimeo-playing", "false");
-      player.pause();
-    }
-
-    // Click: Play
-    const playBtn = vimeoElement.querySelector('[data-vimeo-control="play"]');
-    if (playBtn) {
-      playBtn.addEventListener("click", function () {
-        vimeoPlayerPlay();
-      });
-    }
-
-    // Click: Pause
-    const pauseBtn = vimeoElement.querySelector('[data-vimeo-control="pause"]');
-    if (pauseBtn) {
-      pauseBtn.addEventListener("click", function () {
-        vimeoPlayerPause();
-        // If paused by user => kill the scroll-based autoplay
-        if (vimeoElement.getAttribute("data-vimeo-autoplay") === "true") {
-          vimeoElement.setAttribute("data-vimeo-paused-by-user", "true");
-          // Removing scroll listener (if you’d like)
-          window.removeEventListener("scroll", checkVisibility);
-        }
-      });
-    }
   });
 }
 
@@ -670,6 +612,15 @@ function initModalBasic() {
   // Close modal on `Escape` key
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
+      // Find any active modals with Vimeo videos
+      document.querySelectorAll('[data-modal-status="active"]').forEach((modal) => {
+        const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
+        if (vimeoElement && vimeoElement.id && vimeoPlayers[vimeoElement.id]) {
+          // Pause the video
+          vimeoPlayers[vimeoElement.id].pause();
+        }
+      });
+
       closeAllModals();
     }
   });
@@ -682,9 +633,163 @@ function initModalBasic() {
       modalGroup.setAttribute("data-modal-group-status", "not-active");
     }
   }
+
+  // Handle Vimeo controls within modals
+  document.querySelectorAll('[data-vimeo-control="pause"]').forEach((control) => {
+    control.addEventListener("click", function () {
+      // Find the modal containing this control
+      const modal = this.closest("[data-modal-name]");
+      if (!modal) return;
+
+      // Find the Vimeo player in this modal
+      const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
+      if (!vimeoElement || !vimeoElement.id) return;
+
+      // If we have a player instance for this ID
+      if (vimeoPlayers[vimeoElement.id]) {
+        // Pause the video
+        vimeoPlayers[vimeoElement.id].pause();
+      }
+    });
+  });
+
+  // Store Vimeo player instances when they're created
+  // This function will be called from initVimeoBGVideo
+  window.registerVimeoPlayer = function (id, player) {
+    vimeoPlayers[id] = player;
+  };
 }
 
 // Initialize Basic Modal
 document.addEventListener("DOMContentLoaded", () => {
   initModalBasic();
+  initModalVimeoVideos();
 });
+
+// Function to handle Vimeo videos in modals
+function initModalVimeoVideos() {
+  // Store references to Vimeo players in modals
+  const modalVimeoPlayers = {};
+
+  // Find all Vimeo videos in modals
+  document.querySelectorAll("[data-modal-name] [data-vimeo-bg-init]").forEach((vimeoElement, index) => {
+    const vimeoVideoID = vimeoElement.getAttribute("data-vimeo-video-id");
+    if (!vimeoVideoID) return;
+
+    // Get the modal name
+    const modalName = vimeoElement.closest("[data-modal-name]").getAttribute("data-modal-name");
+
+    // Make sure the video has an ID
+    if (!vimeoElement.id) {
+      vimeoElement.id = `modal-vimeo-${modalName}-${index}`;
+    }
+
+    // Update the iframe src to ensure it's not set to background mode and has audio enabled
+    const iframe = vimeoElement.querySelector("iframe");
+    if (iframe) {
+      let src = iframe.getAttribute("src");
+      // Remove background=1 and muted=1 parameters if present
+      src = src.replace("background=1", "background=0");
+      src = src.replace("muted=1", "muted=0");
+      // Make sure we have the right parameters for modal videos
+      if (!src.includes("background=0")) {
+        src = src.includes("?") ? src + "&background=0" : src + "?background=0";
+      }
+      if (!src.includes("muted=0")) {
+        src = src + "&muted=0";
+      }
+      iframe.setAttribute("src", src);
+    }
+
+    // Get the player instance
+    const player = new Vimeo.Player(vimeoElement.id);
+
+    // Store the player reference
+    modalVimeoPlayers[modalName] = player;
+
+    // Ensure volume is set to 1 for modal videos
+    player.setVolume(1);
+
+    // Add loaded event handler
+    player.on("loaded", () => {
+      console.log(`Vimeo player for modal ${modalName} loaded`);
+    });
+  });
+
+  // Handle play controls that open modals
+  document.querySelectorAll('[data-vimeo-control="play"][data-modal-target]').forEach((control) => {
+    control.addEventListener("click", function () {
+      const modalTarget = this.getAttribute("data-modal-target");
+      if (!modalTarget || !modalVimeoPlayers[modalTarget]) return;
+
+      console.log(`Play button clicked for modal: ${modalTarget}`);
+
+      // Give the modal time to open
+      setTimeout(() => {
+        console.log(`Attempting to play video in modal: ${modalTarget}`);
+
+        // Make sure volume is set to 1 (with audio) and play
+        modalVimeoPlayers[modalTarget]
+          .setVolume(1)
+          .then(() => {
+            console.log("Volume set to 1");
+            return modalVimeoPlayers[modalTarget].play();
+          })
+          .then(() => {
+            console.log("Video playing");
+          })
+          .catch((error) => {
+            console.error("Error playing video:", error);
+          });
+      }, 800); // Increased delay to ensure modal is fully visible
+    });
+  });
+
+  // Handle pause controls in modals
+  document.querySelectorAll('[data-modal-name] [data-vimeo-control="pause"]').forEach((control) => {
+    const modal = control.closest("[data-modal-name]");
+    if (!modal) return;
+
+    const modalName = modal.getAttribute("data-modal-name");
+    if (!modalVimeoPlayers[modalName]) return;
+
+    control.addEventListener("click", function () {
+      console.log(`Pausing video in modal: ${modalName}`);
+      modalVimeoPlayers[modalName].pause().catch((error) => {
+        console.error("Error pausing video:", error);
+      });
+    });
+  });
+
+  // Pause videos when modals are closed
+  document.querySelectorAll("[data-modal-close]").forEach((closeBtn) => {
+    closeBtn.addEventListener("click", function () {
+      const modal = this.closest("[data-modal-name]");
+      if (!modal) return;
+
+      const modalName = modal.getAttribute("data-modal-name");
+      if (modalVimeoPlayers[modalName]) {
+        console.log(`Pausing video on modal close: ${modalName}`);
+        modalVimeoPlayers[modalName].pause().catch((error) => {
+          console.error("Error pausing video on close:", error);
+        });
+      }
+    });
+  });
+
+  // Pause videos when Escape key is pressed
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      // Find any active modals
+      document.querySelectorAll('[data-modal-status="active"]').forEach((modal) => {
+        const modalName = modal.getAttribute("data-modal-name");
+        if (modalVimeoPlayers[modalName]) {
+          console.log(`Pausing video on Escape key: ${modalName}`);
+          modalVimeoPlayers[modalName].pause().catch((error) => {
+            console.error("Error pausing video on escape:", error);
+          });
+        }
+      });
+    }
+  });
+}
