@@ -42,7 +42,7 @@ function initModalVimeoVideos() {
       // Create a proper URL with all needed parameters
       const vimeoURL = new URL(iframe.src);
       vimeoURL.searchParams.set("api", "1");
-      vimeoURL.searchParams.set("background", "0");
+      vimeoURL.searchParams.set("background", "1");
       vimeoURL.searchParams.set("muted", "0");
       vimeoURL.searchParams.set("autoplay", "0");
       vimeoURL.searchParams.set("loop", "0");
@@ -79,9 +79,9 @@ function initModalVimeoVideos() {
 
       // Ensure volume is set to 1
       player
-        .setVolume(1)
+        .setVolume(0.5)
         .then(function () {
-          console.log(`Volume set to 1 for modal: ${modalName}`);
+          console.log(`Volume set to 0.5 for modal: ${modalName}`);
         })
         .catch(function (error) {
           console.error(`Error setting volume for modal ${modalName}:`, error);
