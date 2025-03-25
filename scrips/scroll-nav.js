@@ -5,6 +5,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const progressBar = document.querySelector(".header__progress"); // Main progress bar
   const sections = []; // Will store section data
   const offset = 10; // Offset in pixels from top of viewport to trigger active state
+  const activeClass = "active"; // Custom active class instead of Webflow's w--current
+
+  // Prevent Webflow's default functionality
+  disableWebflowNavigation();
 
   // Initialize sections data
   navLinks.forEach((link) => {
@@ -42,6 +46,16 @@ document.addEventListener("DOMContentLoaded", function () {
   function updateActiveSection() {
     const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
     const viewportHeight = window.innerHeight;
+    const documentHeight = Math.max(
+      document.body.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.clientHeight,
+      document.documentElement.scrollHeight,
+      document.documentElement.offsetHeight
+    );
+
+    // Calculate total scrollable distance
+    const totalScrollableDistance = documentHeight - viewportHeight;
 
     // Find the current active section
     let activeSection = null;
@@ -64,14 +78,15 @@ document.addEventListener("DOMContentLoaded", function () {
     if (activeSection) {
       // Remove active class from all links
       navLinks.forEach((link) => {
-        link.classList.remove("w--current");
+        link.classList.remove(activeClass);
+        link.classList.remove("w--current"); // Also remove Webflow's class just in case
       });
 
       // Add active class to current link
-      activeSection.link.classList.add("w--current");
+      activeSection.link.classList.add(activeClass);
 
       // Calculate progress within the current section
-      let progress = 0;
+      let sectionProgress = 0;
 
       if (activeSectionIndex < sections.length - 1) {
         // If not the last section, calculate progress between this section and the next
@@ -80,7 +95,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const sectionDistance = nextSection.top - activeSection.top;
 
         // Calculate progress as percentage (0-100)
-        progress = Math.min(100, Math.max(0, (sectionScrolled / sectionDistance) * 100));
+        sectionProgress = Math.min(100, Math.max(0, (sectionScrolled / sectionDistance) * 100));
       } else {
         // If it's the last section, calculate progress within the section
         const sectionScrolled = scrollPosition - activeSection.top;
@@ -88,31 +103,42 @@ document.addEventListener("DOMContentLoaded", function () {
         // Calculate progress as percentage (0-100)
         // We consider the section "complete" when we've scrolled through most of it
         // or reached the bottom of the page
-        const isAtBottom = scrollPosition + viewportHeight >= document.body.scrollHeight - 50;
+        const isAtBottom = scrollPosition + viewportHeight >= documentHeight - 50;
 
         if (isAtBottom) {
-          progress = 100;
+          sectionProgress = 100;
         } else {
-          progress = Math.min(100, Math.max(0, (sectionScrolled / activeSection.height) * 100));
+          sectionProgress = Math.min(100, Math.max(0, (sectionScrolled / activeSection.height) * 100));
         }
       }
 
       // Update the progress bar width
       if (progressBar) {
-        // Calculate overall progress
-        const overallProgress = ((activeSectionIndex + progress / 100) / sections.length) * 100;
+        // Calculate overall progress based on total scroll position
+        // This ensures the progress bar matches the actual scroll progress
+        let overallProgress;
+
+        if (totalScrollableDistance > 0) {
+          // Calculate progress based on overall scroll position
+          overallProgress = (scrollPosition / totalScrollableDistance) * 100;
+        } else {
+          // Fallback to section-based calculation if totalScrollableDistance is invalid
+          overallProgress = ((activeSectionIndex + sectionProgress / 100) / sections.length) * 100;
+        }
+
+        // Ensure progress is between 0-100%
+        overallProgress = Math.min(100, Math.max(0, overallProgress));
         progressBar.style.width = `${overallProgress}%`;
       }
 
-      // Optional: Update individual progress bars if you have them
-      updateIndividualProgress(activeSectionIndex, progress);
+      // Update individual progress bars if you have them
+      updateIndividualProgress(activeSectionIndex, sectionProgress);
     }
   }
 
-  // Function to update individual progress bars (if you decide to use them)
+  // Function to update individual progress bars
   function updateIndividualProgress(activeIndex, progress) {
     // If you have individual progress bars inside each nav link
-    // You can update them here
     navLinks.forEach((link, index) => {
       const individualProgress = link.querySelector(".link-progress");
       if (individualProgress) {
@@ -130,6 +156,52 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // Function to disable Webflow's default navigation behavior
+  function disableWebflowNavigation() {
+    // Create a style element to override Webflow's default behavior
+    const style = document.createElement("style");
+    style.textContent = `
+      /* Disable Webflow's default navigation highlighting */
+      .w-nav-link.w--current {
+        color: inherit !important;
+        background-color: inherit !important;
+        font-weight: inherit !important;
+        /* Add any other properties that Webflow might be changing */
+      }
+      
+      /* Your custom active class styling */
+      .side-nav a.active {
+        /* Add your custom active styling here */
+        font-weight: bold;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Remove any existing w--current classes
+    document.querySelectorAll(".w--current").forEach((el) => {
+      el.classList.remove("w--current");
+    });
+
+    // Observe DOM changes to remove any w--current classes that Webflow might add
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === "attributes" &&
+          mutation.attributeName === "class" &&
+          mutation.target.classList.contains("w--current")
+        ) {
+          // If Webflow adds w--current, remove it
+          mutation.target.classList.remove("w--current");
+        }
+      });
+    });
+
+    // Observe all navigation links
+    navLinks.forEach((link) => {
+      observer.observe(link, { attributes: true });
+    });
+  }
+
   // Initialize
   updateSectionPositions();
   updateActiveSection();
@@ -144,9 +216,30 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // Smooth scroll when clicking nav links
-  navLinks.forEach((link) => {
+  navLinks.forEach((link, linkIndex) => {
     link.addEventListener("click", function (e) {
       e.preventDefault();
+
+      // Remove active class from all links and add to clicked link
+      navLinks.forEach((l) => l.classList.remove(activeClass));
+      this.classList.add(activeClass);
+
+      // Reset all individual progress bars
+      navLinks.forEach((navLink, index) => {
+        const progressBar = navLink.querySelector(".link-progress");
+        if (progressBar) {
+          if (index < linkIndex) {
+            // Sections before clicked link are 100% complete
+            progressBar.style.width = "100%";
+          } else if (index === linkIndex) {
+            // Clicked link's progress starts at 0%
+            progressBar.style.width = "0%";
+          } else {
+            // Sections after clicked link are 0%
+            progressBar.style.width = "0%";
+          }
+        }
+      });
 
       const targetId = this.getAttribute("href");
       const targetSection = document.querySelector(targetId);
