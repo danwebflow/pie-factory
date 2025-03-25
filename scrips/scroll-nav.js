@@ -11,7 +11,8 @@ document.addEventListener("DOMContentLoaded", function () {
   disableWebflowNavigation();
 
   // Initialize sections data
-  navLinks.forEach((link) => {
+  navLinks.forEach((link, event) => {
+    event.preventDefault();
     const sectionId = link.getAttribute("href");
     const section = document.querySelector(sectionId);
 

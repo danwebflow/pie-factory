@@ -4,6 +4,11 @@ gsap.config({ nullTargetWarn: false });
 // Create a global vimeoPlayers object to store all player instances
 window.vimeoPlayers = {};
 
+// Initialize dot navigation and progress bar when DOM is loaded
+document.addEventListener("DOMContentLoaded", function () {
+  initDotNavigation();
+});
+
 function initCSSMarquee() {
   const pixelsPerSecond = 75; // Set the marquee speed (pixels per second)
   const marquees = document.querySelectorAll("[data-css-marquee]");
@@ -909,5 +914,196 @@ function initModalVimeoVideos() {
         });
       });
     }
+  });
+}
+
+// Function to initialize dot navigation and progress bar
+function initDotNavigation() {
+  // Configuration
+  const navDots = document.querySelectorAll(".side-nav .dot"); // Adjust selector to match your dot elements
+  const progressBar = document.querySelector(".header__progress"); // Main progress bar
+  const sections = []; // Will store section data
+  const offset = 10; // Offset in pixels from top of viewport to trigger active state
+  const activeClass = "active"; // Custom active class
+
+  // Skip if no dots or sections found
+  if (navDots.length === 0) return;
+
+  // Initialize sections data
+  navDots.forEach((dot) => {
+    // Get the section ID from the dot's data attribute
+    const sectionId = dot.getAttribute("data-section");
+    const section = document.querySelector(sectionId);
+
+    if (section) {
+      sections.push({
+        id: sectionId,
+        element: section,
+        dot: dot,
+        top: 0, // Will be calculated
+        bottom: 0, // Will be calculated
+        height: 0, // Will be calculated
+      });
+    }
+  });
+
+  // Skip if no valid sections found
+  if (sections.length === 0) return;
+
+  // Function to update section positions (called on load and resize)
+  function updateSectionPositions() {
+    sections.forEach((section) => {
+      const rect = section.element.getBoundingClientRect();
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+      section.top = rect.top + scrollTop;
+      section.height = rect.height;
+      section.bottom = section.top + section.height;
+    });
+
+    // Sort sections by their position from top to bottom
+    sections.sort((a, b) => a.top - b.top);
+  }
+
+  // Function to update active dot and progress bar
+  function updateActiveSection() {
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    const viewportHeight = window.innerHeight;
+    const documentHeight = Math.max(
+      document.body.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.clientHeight,
+      document.documentElement.scrollHeight,
+      document.documentElement.offsetHeight
+    );
+
+    // Calculate total scrollable distance
+    const totalScrollableDistance = documentHeight - viewportHeight;
+
+    // Find the current active section
+    let activeSection = null;
+    let activeSectionIndex = -1;
+
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i];
+
+      // Check if the section is at the top of the viewport (with offset)
+      if (scrollPosition >= section.top - offset) {
+        activeSection = section;
+        activeSectionIndex = i;
+      } else {
+        // Once we find a section that's below the top, we can stop
+        break;
+      }
+    }
+
+    // If we found an active section
+    if (activeSection) {
+      // Remove active class from all dots
+      navDots.forEach((dot) => {
+        dot.classList.remove(activeClass);
+      });
+
+      // Add active class to current dot
+      activeSection.dot.classList.add(activeClass);
+
+      // Calculate progress within the current section
+      let sectionProgress = 0;
+
+      if (activeSectionIndex < sections.length - 1) {
+        // If not the last section, calculate progress between this section and the next
+        const nextSection = sections[activeSectionIndex + 1];
+        const sectionScrolled = scrollPosition - activeSection.top;
+        const sectionDistance = nextSection.top - activeSection.top;
+
+        // Calculate progress as percentage (0-100)
+        sectionProgress = Math.min(100, Math.max(0, (sectionScrolled / sectionDistance) * 100));
+      } else {
+        // If it's the last section, calculate progress within the section
+        const sectionScrolled = scrollPosition - activeSection.top;
+
+        // Calculate progress as percentage (0-100)
+        // We consider the section "complete" when we've scrolled through most of it
+        // or reached the bottom of the page
+        const isAtBottom = scrollPosition + viewportHeight >= documentHeight - 50;
+
+        if (isAtBottom) {
+          sectionProgress = 100;
+        } else {
+          sectionProgress = Math.min(100, Math.max(0, (sectionScrolled / activeSection.height) * 100));
+        }
+      }
+
+      // Update progress states with data attributes
+      navDots.forEach((dot, index) => {
+        if (index < activeSectionIndex) {
+          // Sections before active are completed
+          dot.setAttribute("data-progress", "completed");
+        } else if (index === activeSectionIndex) {
+          // Active section is in progress
+          dot.setAttribute("data-progress", "in-progress");
+        } else {
+          // Sections after active are not started
+          dot.setAttribute("data-progress", "not-started");
+        }
+      });
+
+      // Update the header progress bar
+      if (progressBar) {
+        progressBar.style.width = `${sectionProgress}%`;
+      }
+    }
+  }
+
+  // Initialize
+  updateSectionPositions();
+  updateActiveSection();
+
+  // Update on scroll
+  window.addEventListener("scroll", updateActiveSection);
+
+  // Update positions on window resize
+  window.addEventListener("resize", function () {
+    updateSectionPositions();
+    updateActiveSection();
+  });
+
+  // Smooth scroll when clicking dots
+  navDots.forEach((dot, dotIndex) => {
+    dot.addEventListener("click", function () {
+      // Remove active class from all dots and add to clicked dot
+      navDots.forEach((d) => d.classList.remove(activeClass));
+      this.classList.add(activeClass);
+
+      // Update data attributes for tracking progress state
+      navDots.forEach((navDot, index) => {
+        if (index < dotIndex) {
+          // Sections before clicked dot are completed
+          navDot.setAttribute("data-progress", "completed");
+        } else if (index === dotIndex) {
+          // Clicked dot is just starting
+          navDot.setAttribute("data-progress", "starting");
+        } else {
+          // Sections after clicked dot are not started
+          navDot.setAttribute("data-progress", "not-started");
+        }
+      });
+
+      // Reset the header progress bar
+      if (progressBar) {
+        progressBar.style.width = "0%";
+      }
+
+      const sectionId = this.getAttribute("data-section");
+      const targetSection = document.querySelector(sectionId);
+
+      if (targetSection) {
+        // Scroll to section with smooth behavior
+        window.scrollTo({
+          top: targetSection.offsetTop - offset,
+          behavior: "smooth",
+        });
+      }
+    });
   });
 }
