@@ -128,7 +128,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Ensure progress is between 0-100%
         overallProgress = Math.min(100, Math.max(0, overallProgress));
-        progressBar.style.width = `${overallProgress}%`;
+
+        // We'll update the main progress bar in the updateIndividualProgress function
+        // to ensure consistency between main and individual progress
       }
 
       // Update individual progress bars if you have them
@@ -141,6 +143,20 @@ document.addEventListener("DOMContentLoaded", function () {
     // If you have individual progress bars inside each nav link
     navLinks.forEach((link, index) => {
       const individualProgress = link.querySelector(".link-progress");
+
+      // Update progress state with data attributes
+      if (index < activeIndex) {
+        // Sections before active are completed
+        link.setAttribute("data-progress", "completed");
+      } else if (index === activeIndex) {
+        // Active section is in progress
+        link.setAttribute("data-progress", "in-progress");
+      } else {
+        // Sections after active are not started
+        link.setAttribute("data-progress", "not-started");
+      }
+
+      // Update the visual progress bar if it exists
       if (individualProgress) {
         if (index < activeIndex) {
           // Sections before active are 100% complete
@@ -148,6 +164,13 @@ document.addEventListener("DOMContentLoaded", function () {
         } else if (index === activeIndex) {
           // Active section shows current progress
           individualProgress.style.width = `${progress}%`;
+
+          // Also update the header progress for the active section
+          const headerProgress = document.querySelector(".header__progress");
+          if (headerProgress) {
+            // Use the same progress value for consistency
+            headerProgress.style.width = `${progress}%`;
+          }
         } else {
           // Sections after active are 0%
           individualProgress.style.width = "0%";
@@ -224,8 +247,21 @@ document.addEventListener("DOMContentLoaded", function () {
       navLinks.forEach((l) => l.classList.remove(activeClass));
       this.classList.add(activeClass);
 
-      // Reset all individual progress bars
+      // Reset all individual progress bars and update data attributes
       navLinks.forEach((navLink, index) => {
+        // Update data attributes for tracking progress state
+        if (index < linkIndex) {
+          // Sections before clicked link are completed
+          navLink.setAttribute("data-progress", "completed");
+        } else if (index === linkIndex) {
+          // Clicked link is just starting
+          navLink.setAttribute("data-progress", "starting");
+        } else {
+          // Sections after clicked link are not started
+          navLink.setAttribute("data-progress", "not-started");
+        }
+
+        // Update visual progress bars
         const progressBar = navLink.querySelector(".link-progress");
         if (progressBar) {
           if (index < linkIndex) {
@@ -240,6 +276,12 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
       });
+
+      // Also reset the header progress bar
+      const headerProgress = document.querySelector(".header__progress");
+      if (headerProgress) {
+        headerProgress.style.width = "0%";
+      }
 
       const targetId = this.getAttribute("href");
       const targetSection = document.querySelector(targetId);
