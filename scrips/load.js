@@ -272,7 +272,82 @@ function initTabSystem() {
 
 document.addEventListener("DOMContentLoaded", () => {
   initTabSystem();
+  initNumberCounters();
 });
+
+function initNumberCounters() {
+  // Find all elements with the number-text class
+  const numberElements = document.querySelectorAll(".number-text");
+
+  if (numberElements.length === 0) return;
+
+  // Function to parse number from string (handling separators like commas)
+  function parseNumberFromString(str) {
+    // Remove all non-numeric characters except decimal points
+    const numStr = str.replace(/[^\d.]/g, "");
+    return parseFloat(numStr);
+  }
+
+  // Function to format number with the same separators as the original
+  function formatNumber(num, originalStr) {
+    // Check if original has commas as thousand separators
+    if (originalStr.includes(",")) {
+      return num.toLocaleString();
+    }
+    // Check if original has spaces as thousand separators
+    else if (/\d\s\d/.test(originalStr)) {
+      return num.toLocaleString().replace(/,/g, " ");
+    }
+    // No separators
+    return num.toString();
+  }
+
+  // Create an intersection observer
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const element = entry.target;
+          const originalText = element.textContent;
+          const targetNumber = parseNumberFromString(originalText);
+
+          // Calculate starting number (25% less than target)
+          const startNumber = Math.round(targetNumber * 0.75);
+
+          // Store the original text to preserve any prefix/suffix
+          const prefix = originalText.split(targetNumber.toString())[0] || "";
+          const suffix = originalText.split(targetNumber.toString())[1] || "";
+
+          // Animate the number
+          gsap.fromTo(
+            element,
+            {
+              innerText: startNumber,
+            },
+            {
+              innerText: targetNumber,
+              duration: 2,
+              ease: "power2.out",
+              onUpdate: function () {
+                const currentValue = Math.round(this.targets()[0]._gsap.innerText);
+                element.textContent = prefix + formatNumber(currentValue, originalText) + suffix;
+              },
+            }
+          );
+
+          // Unobserve after animation starts
+          observer.unobserve(element);
+        }
+      });
+    },
+    { threshold: 0.1 }
+  ); // Trigger when at least 10% of the element is visible
+
+  // Observe all number elements
+  numberElements.forEach((element) => {
+    observer.observe(element);
+  });
+}
 
 document.addEventListener("DOMContentLoaded", (event) => {
   gsap.registerPlugin(Draggable, InertiaPlugin);
