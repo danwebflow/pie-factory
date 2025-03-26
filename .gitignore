@@ -1,6 +1,5 @@
 # Ignore assets directory
 /assets
-.js
 
 # Logs
 logs
