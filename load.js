@@ -294,7 +294,7 @@ function initNumberCounters() {
 }
 
 // Register GSAP plugins
-gsap.registerPlugin(Draggable, InertiaPlugin);
+gsap.registerPlugin(SplitText, CustomEase, ScrambleTextPlugin, Flip, Draggable, InertiaPlugin);
 
 function initSliders() {
   // Find all sections that might contain sliders
@@ -901,6 +901,9 @@ function initModalVimeoVideos() {
     }
   });
 }
+
+// ANIMATION COMPONENTS
+//import "./ànimation";
 
 // Initialize all components when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
