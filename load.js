@@ -7,7 +7,8 @@ gsap.config({ nullTargetWarn: false });
 window.vimeoPlayers = {};
 
 document.querySelectorAll(".header__link").forEach((link) => {
-  if (link.querySelector(".w--current")) {
+  // Check if the link itself or any of its children has the "w--current" class
+  if (link.classList.contains("w--current") || link.querySelector(".w--current")) {
     link.classList.add("active");
   }
 });
