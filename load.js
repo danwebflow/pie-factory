@@ -389,6 +389,24 @@ function initNumberCounters() {
     return num.toString();
   }
 
+  // Function to extract prefix and suffix from a string containing a number
+  function extractPrefixAndSuffix(str) {
+    // Use regex to find the number pattern (with or without separators)
+    const numberPattern = /[\d,.\s]+/;
+    const match = str.match(numberPattern);
+
+    if (!match) return { prefix: "", suffix: "" };
+
+    const numberStr = match[0];
+    const startIndex = str.indexOf(numberStr);
+    const endIndex = startIndex + numberStr.length;
+
+    return {
+      prefix: str.substring(0, startIndex),
+      suffix: str.substring(endIndex),
+    };
+  }
+
   // Create an intersection observer
   const observer = new IntersectionObserver(
     (entries) => {
@@ -401,9 +419,8 @@ function initNumberCounters() {
           // Calculate starting number (25% less than target)
           const startNumber = Math.round(targetNumber * 0.75);
 
-          // Store the original text to preserve any prefix/suffix
-          const prefix = originalText.split(targetNumber.toString())[0] || "";
-          const suffix = originalText.split(targetNumber.toString())[1] || "";
+          // Extract prefix and suffix from the original text
+          const { prefix, suffix } = extractPrefixAndSuffix(originalText);
 
           // Animate the number
           gsap.fromTo(
