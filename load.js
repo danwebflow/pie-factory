@@ -7,37 +7,37 @@ gsap.config({ nullTargetWarn: false });
 window.vimeoPlayers = {};
 
 // Navigation with X-Translation Progress
-function initDotNavigation() {
-  const sections = document.querySelectorAll(`[b-section]`);
+// function initDotNavigation() {
+//   const sections = document.querySelectorAll(`[b-section]`);
 
-  sections.forEach((section) => {
-    const sectionName = section.getAttribute("b-section");
-    const link = document.querySelector(`[b-nav-link="${sectionName}"]`);
-    const bg = link.querySelector(".nav-link-bg");
+//   sections.forEach((section) => {
+//     const sectionName = section.getAttribute("b-section");
+//     const link = document.querySelector(`[b-nav-link="${sectionName}"]`);
+//     const bg = link.querySelector(".nav-link-bg");
 
-    if (!link || !bg) {
-      return;
-    }
+//     if (!link || !bg) {
+//       return;
+//     }
 
-    // Initial State - width 0%
-    gsap.set(bg, { width: "0%", opacity: 1 });
+//     // Initial State - width 0%
+//     gsap.set(bg, { width: "0%", opacity: 1 });
 
-    ScrollTrigger.create({
-      trigger: section,
-      start: "top center",
-      end: "bottom center",
-      scrub: true,
-      onUpdate: (self) => {
-        const progress = self.progress;
-        gsap.set(bg, { width: `${progress * 100}%` });
-      },
-      onLeave: () => {
-        // End state - width 100%
-        gsap.to(bg, { width: "100%", duration: 0.3, ease: "Power3.inOut" });
-      },
-    });
-  });
-}
+//     ScrollTrigger.create({
+//       trigger: section,
+//       start: "top center",
+//       end: "bottom center",
+//       scrub: true,
+//       onUpdate: (self) => {
+//         const progress = self.progress;
+//         gsap.set(bg, { width: `${progress * 100}%` });
+//       },
+//       onLeave: () => {
+//         // End state - width 100%
+//         gsap.to(bg, { width: "100%", duration: 0.3, ease: "Power3.inOut" });
+//       },
+//     });
+//   });
+// }
 
 function initCSSMarquee() {
   const pixelsPerSecond = 75; // Set the marquee speed (pixels per second)
