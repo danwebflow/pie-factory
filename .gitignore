@@ -1,5 +1,6 @@
 # Ignore assets directory
 /assets
+.js
 
 # Logs
 logs
@@ -12,6 +13,7 @@ lerna-debug.log*
 # Dependency directories
 node_modules/
 jspm_packages/
+build/
 
 # Build outputs
 dist/
