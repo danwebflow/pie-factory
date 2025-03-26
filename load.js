@@ -1,150 +1,95 @@
 /**
  * Pie Factory Main Script
- *
- * Development Mode:
- * To enable development mode, add the devMode attribute to the script tag:
- * <script devMode="true" src="https://danwebflow.github.io/pie-factory/scrips/load.js"></script>
  */
-
-// Note: The Javascript is optional. Read the documentation below how to use the CSS Only version.
 gsap.config({ nullTargetWarn: false });
 
-// Create a global vimeoPlayers object to store all player instances
+// Global vimeo players storage
 window.vimeoPlayers = {};
 
-// Initialize dot navigation and progress bar when DOM is loaded
-document.addEventListener("DOMContentLoaded", function () {
-  if (typeof initDotNavigation === "function") {
-    initDotNavigation();
-  }
+// Dot Navigation with Link Progress
+function initDotNavigation() {
+  const headerLinks = document.querySelectorAll('.header__link[href^="#"]');
+  const sideNavDots = document.querySelectorAll(".sidebar__nav .dot");
+  const offset = 100;
 
-  /**
-   * Dot Navigation with Link Progress
-   *
-   * This script handles the progress indicators for navigation links
-   * based on the current active section (determined by Webflow's w--current class)
-   */
+  if (headerLinks.length === 0 && sideNavDots.length === 0) return;
 
-  function initDotNavigation() {
-    console.log("Initializing dot navigation");
+  function updateProgressIndicators() {
+    const currentDot = document.querySelector(".sidebar__nav .dot.w--current");
 
-    // Configuration
-    const headerLinks = document.querySelectorAll('.header__link[href^="#"]');
-    const sideNavDots = document.querySelectorAll(".sidebar__nav .dot");
-    const offset = 10;
-
-    // If no navigation elements, exit early
-    if (headerLinks.length === 0 && sideNavDots.length === 0) {
-      console.log("No navigation elements found");
+    if (!currentDot) {
+      headerLinks.forEach((link) => {
+        const progressEl = link.querySelector(".link-progress");
+        if (progressEl) progressEl.style.width = "0%";
+      });
       return;
     }
 
-    console.log(`Found ${headerLinks.length} header links and ${sideNavDots.length} sidebar dots`);
+    const currentSectionId = currentDot.getAttribute("href");
+    if (!currentSectionId) return;
 
-    // Function to update progress indicators
-    function updateProgressIndicators() {
-      // Get the current dot with w--current class (Webflow adds this automatically)
-      const currentDot = document.querySelector(".sidebar__nav .dot.w--current");
+    const currentSection = document.querySelector(currentSectionId);
+    if (!currentSection) return;
 
-      // If no dot has w--current, set all progress to 0%
-      if (!currentDot) {
-        headerLinks.forEach((link) => {
-          const progressEl = link.querySelector(".link-progress");
-          if (progressEl) progressEl.style.width = "0%";
-        });
-        return;
-      }
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    const viewportHeight = window.innerHeight;
+    const sectionTop = currentSection.getBoundingClientRect().top + window.pageYOffset;
+    const sectionHeight = currentSection.offsetHeight;
+    const sectionScrolled = scrollPosition - sectionTop;
+    const isAtBottom = scrollPosition + viewportHeight >= document.body.scrollHeight - 50;
 
-      // Get the section associated with the current dot
-      const currentSectionId = currentDot.getAttribute("href");
-      if (!currentSectionId) return;
+    let progress;
+    if (isAtBottom) {
+      progress = 100;
+    } else {
+      progress = Math.min(100, Math.max(0, (sectionScrolled / sectionHeight) * 100));
+    }
 
-      const currentSection = document.querySelector(currentSectionId);
-      if (!currentSection) return;
+    const currentLinkIndex = Array.from(headerLinks).findIndex(
+      (link) => link.getAttribute("href") === currentSectionId
+    );
 
-      // Calculate progress within the current section
-      const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-      const viewportHeight = window.innerHeight;
-      const sectionTop = currentSection.getBoundingClientRect().top + window.pageYOffset;
-      const sectionHeight = currentSection.offsetHeight;
-      const sectionScrolled = scrollPosition - sectionTop;
+    headerLinks.forEach((link, index) => {
+      const progressEl = link.querySelector(".link-progress");
+      if (!progressEl) return;
 
-      // Check if we're at the bottom of the page
-      const isAtBottom = scrollPosition + viewportHeight >= document.body.scrollHeight - 50;
-
-      // Calculate progress
-      let progress;
-      if (isAtBottom) {
-        // At the bottom of the page, set progress to 100%
-        progress = 100;
+      if (index < currentLinkIndex) {
+        progressEl.style.width = "100%";
+      } else if (index === currentLinkIndex) {
+        progressEl.style.width = `${progress}%`;
       } else {
-        // Calculate progress as percentage of section scrolled
-        progress = Math.min(100, Math.max(0, (sectionScrolled / sectionHeight) * 100));
+        progressEl.style.width = "0%";
       }
-
-      // Find the index of the current section in the header links
-      const currentLinkIndex = Array.from(headerLinks).findIndex(
-        (link) => link.getAttribute("href") === currentSectionId
-      );
-
-      // Update link progress indicators
-      headerLinks.forEach((link, index) => {
-        const progressEl = link.querySelector(".link-progress");
-        if (!progressEl) return;
-
-        if (index < currentLinkIndex) {
-          // Sections before the current one - full progress
-          progressEl.style.width = "100%";
-        } else if (index === currentLinkIndex) {
-          // Current section - show progress within this section
-          progressEl.style.width = `${progress}%`;
-        } else {
-          // Sections after the current one - no progress
-          progressEl.style.width = "0%";
-        }
-      });
-    }
-
-    // Event listeners
-    window.addEventListener("scroll", updateProgressIndicators);
-    window.addEventListener("resize", updateProgressIndicators);
-
-    // Make sure progress is updated after all images and resources are loaded
-    window.addEventListener("load", updateProgressIndicators);
-
-    // Smooth scroll for all nav links
-    function setupSmoothScroll(links) {
-      links.forEach((link) => {
-        link.addEventListener("click", function (e) {
-          const targetId = this.getAttribute("href");
-          if (!targetId || !targetId.startsWith("#")) return;
-
-          e.preventDefault();
-          const targetSection = document.querySelector(targetId);
-
-          if (targetSection) {
-            window.scrollTo({
-              top: targetSection.offsetTop - offset,
-              behavior: "smooth",
-            });
-          }
-        });
-      });
-    }
-
-    // Setup smooth scrolling for both navigation systems
-    setupSmoothScroll(headerLinks);
-    setupSmoothScroll(sideNavDots);
-
-    // Initialize on load
-    updateProgressIndicators();
-
-    console.log("Dot navigation initialized successfully");
+    });
   }
 
-  // Initialize when the DOM is ready
-  document.addEventListener("DOMContentLoaded", initDotNavigation);
-});
+  function setupSmoothScroll(links) {
+    links.forEach((link) => {
+      link.addEventListener("click", function (e) {
+        const targetId = this.getAttribute("href");
+        if (!targetId || !targetId.startsWith("#")) return;
+
+        e.preventDefault();
+        const targetSection = document.querySelector(targetId);
+
+        if (targetSection) {
+          window.scrollTo({
+            top: targetSection.offsetTop - offset,
+            behavior: "smooth",
+          });
+        }
+      });
+    });
+  }
+
+  window.addEventListener("scroll", updateProgressIndicators);
+  window.addEventListener("resize", updateProgressIndicators);
+  window.addEventListener("load", updateProgressIndicators);
+
+  setupSmoothScroll(headerLinks);
+  setupSmoothScroll(sideNavDots);
+  updateProgressIndicators();
+}
 
 function initCSSMarquee() {
   const pixelsPerSecond = 75; // Set the marquee speed (pixels per second)
@@ -179,11 +124,6 @@ function initCSSMarquee() {
     observer.observe(marquee);
   });
 }
-
-// Initialize CSS Marquee
-document.addEventListener("DOMContentLoaded", function () {
-  initCSSMarquee();
-});
 
 function initVimeoBGVideo() {
   // Select all elements that have [data-vimeo-bg-init]
@@ -254,33 +194,25 @@ function initVimeoBGVideo() {
   });
 }
 
-// Initialize Vimeo Background Video
-document.addEventListener("DOMContentLoaded", function () {
-  initVimeoBGVideo();
-});
-
 function initTabSystem() {
   const wrappers = document.querySelectorAll('[data-tabs="wrapper"]');
 
   wrappers.forEach((wrapper) => {
     const contentItems = wrapper.querySelectorAll('[data-tabs="content-item"]');
     const visualItems = wrapper.querySelectorAll('[data-tabs="visual-item"]');
-
     const autoplay = wrapper.dataset.tabsAutoplay === "true";
     const autoplayDuration = parseInt(wrapper.dataset.tabsAutoplayDuration) || 5000;
 
-    let activeContent = null; // keep track of active item/link
+    let activeContent = null;
     let activeVisual = null;
     let isAnimating = false;
-    let progressBarTween = null; // to stop/start the progress bar
+    let progressBarTween = null;
 
     function startProgressBar(index) {
       if (progressBarTween) progressBarTween.kill();
       const bar = contentItems[index].querySelector('[data-tabs="item-progress"]');
       if (!bar) return;
 
-      // In this function, you can basically do anything you want, that should happen as a tab is active
-      // Maybe you have a circle filling, some other element growing, you name it.
       gsap.set(bar, { scaleX: 0, transformOrigin: "left center" });
       progressBarTween = gsap.to(bar, {
         scaleX: 1,
@@ -289,7 +221,7 @@ function initTabSystem() {
         onComplete: () => {
           if (!isAnimating) {
             const nextIndex = (index + 1) % contentItems.length;
-            switchTab(nextIndex); // once bar is full, set next to active – this is important
+            switchTab(nextIndex);
           }
         },
       });
@@ -299,7 +231,7 @@ function initTabSystem() {
       if (isAnimating || contentItems[index] === activeContent) return;
 
       isAnimating = true;
-      if (progressBarTween) progressBarTween.kill(); // Stop any running progress bar here
+      if (progressBarTween) progressBarTween.kill();
 
       const outgoingContent = activeContent;
       const outgoingVisual = activeVisual;
@@ -320,78 +252,52 @@ function initTabSystem() {
           activeContent = incomingContent;
           activeVisual = incomingVisual;
           isAnimating = false;
-          if (autoplay) startProgressBar(index); // Start autoplay bar here
+          if (autoplay) startProgressBar(index);
         },
       });
 
-      // Wrap 'outgoing' in a check to prevent warnings on first run of the function
-      // Of course, during first run (on page load), there's no 'outgoing' tab yet!
       if (outgoingContent) {
-        outgoingContent.classList.remove("active");
-        outgoingVisual?.classList.remove("active");
         tl.set(outgoingBar, { transformOrigin: "right center" })
           .to(outgoingBar, { scaleX: 0, duration: 0.3 }, 0)
           .to(outgoingVisual, { autoAlpha: 0, xPercent: 3 }, 0)
           .to(outgoingContent.querySelector('[data-tabs="item-details"]'), { height: 0 }, 0);
       }
 
-      incomingContent.classList.add("active");
-      incomingVisual.classList.add("active");
       tl.fromTo(incomingVisual, { autoAlpha: 0, xPercent: 3 }, { autoAlpha: 1, xPercent: 0 }, 0.3)
         .fromTo(incomingContent.querySelector('[data-tabs="item-details"]'), { height: 0 }, { height: "auto" }, 0)
         .set(incomingBar, { scaleX: 0, transformOrigin: "left center" }, 0);
     }
 
-    // on page load, set first to active
-    // idea: you could wrap this in a scrollTrigger
-    // so it will only start once a user reaches this section
     switchTab(0);
 
-    // switch tabs on click
     contentItems.forEach((item, i) =>
       item.addEventListener("click", () => {
-        if (item === activeContent) return; // ignore click if current one is already active
+        if (item === activeContent) return;
         switchTab(i);
       })
     );
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  initTabSystem();
-  initNumberCounters();
-});
-
 function initNumberCounters() {
-  // Find all elements with the number-text class
   const numberElements = document.querySelectorAll(".number-text");
-
   if (numberElements.length === 0) return;
 
-  // Function to parse number from string (handling separators like commas)
   function parseNumberFromString(str) {
-    // Remove all non-numeric characters except decimal points
     const numStr = str.replace(/[^\d.]/g, "");
     return parseFloat(numStr);
   }
 
-  // Function to format number with the same separators as the original
   function formatNumber(num, originalStr) {
-    // Check if original has commas as thousand separators
     if (originalStr.includes(",")) {
       return num.toLocaleString();
-    }
-    // Check if original has spaces as thousand separators
-    else if (/\d\s\d/.test(originalStr)) {
+    } else if (/\d\s\d/.test(originalStr)) {
       return num.toLocaleString().replace(/,/g, " ");
     }
-    // No separators
     return num.toString();
   }
 
-  // Function to extract prefix and suffix from a string containing a number
   function extractPrefixAndSuffix(str) {
-    // Use regex to find the number pattern (with or without separators)
     const numberPattern = /[\d,.\s]+/;
     const match = str.match(numberPattern);
 
@@ -407,7 +313,6 @@ function initNumberCounters() {
     };
   }
 
-  // Create an intersection observer
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -415,42 +320,29 @@ function initNumberCounters() {
           const element = entry.target;
           const originalText = element.textContent;
           const targetNumber = parseNumberFromString(originalText);
-
-          // Calculate starting number (25% less than target)
           const startNumber = Math.round(targetNumber * 0.75);
-
-          // Extract prefix and suffix from the original text
           const { prefix, suffix } = extractPrefixAndSuffix(originalText);
 
-          // Animate the number
-          gsap.fromTo(
-            element,
-            {
-              innerText: startNumber,
-            },
-            {
-              innerText: targetNumber,
-              duration: 2,
-              ease: "power2.out",
-              onUpdate: function () {
-                const currentValue = Math.round(this.targets()[0]._gsap.innerText);
-                element.textContent = prefix + formatNumber(currentValue, originalText) + suffix;
-              },
-            }
-          );
+          let counter = { value: startNumber };
 
-          // Unobserve after animation starts
+          gsap.to(counter, {
+            value: targetNumber,
+            duration: 2,
+            ease: "power2.out",
+            onUpdate: function () {
+              const currentValue = Math.round(counter.value);
+              element.textContent = prefix + formatNumber(currentValue, originalText) + suffix;
+            },
+          });
+
           observer.unobserve(element);
         }
       });
     },
     { threshold: 0.1 }
-  ); // Trigger when at least 10% of the element is visible
+  );
 
-  // Observe all number elements
-  numberElements.forEach((element) => {
-    observer.observe(element);
-  });
+  numberElements.forEach((element) => observer.observe(element));
 }
 
 document.addEventListener("DOMContentLoaded", (event) => {
@@ -1070,3 +962,15 @@ function initModalVimeoVideos() {
     }
   });
 }
+
+// Initialize all components when DOM is loaded
+document.addEventListener("DOMContentLoaded", () => {
+  initDotNavigation();
+  initCSSMarquee();
+  initVimeoBGVideo();
+  initTabSystem();
+  initNumberCounters();
+  initSliders();
+  initModalBasic();
+  initModalVimeoVideos();
+});
