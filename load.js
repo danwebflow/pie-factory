@@ -6,13 +6,11 @@ gsap.config({ nullTargetWarn: false });
 // Global vimeo players storage
 window.vimeoPlayers = {};
 
-function initDotNavigation() {
-  document.querySelectorAll(".header__link").forEach((link) => {
-    if (link.querySelector(".w--current")) {
-      link.classList.add("active");
-    }
-  });
-}
+document.querySelectorAll(".header__link").forEach((link) => {
+  if (link.querySelector(".w--current")) {
+    link.classList.add("active");
+  }
+});
 
 function initCSSMarquee() {
   const pixelsPerSecond = 75; // Set the marquee speed (pixels per second)
@@ -882,7 +880,6 @@ function initModalVimeoVideos() {
 
 // Initialize all components when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
-  initDotNavigation();
   initCSSMarquee();
   initVimeoBGVideo();
   initTabSystem();
