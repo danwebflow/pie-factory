@@ -111,7 +111,7 @@
     }
 
     // Define script files to load
-    const scriptFiles = ["tabs.js", "functions.js", "controls.js"];
+    const scriptFiles = [];
 
     // Add cache-busting for local development
     const scripts = scriptFiles.map((file) => {
