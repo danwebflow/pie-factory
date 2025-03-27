@@ -313,11 +313,21 @@ function initSliders() {
 
     // Similar to above, we subtract 1 from our clicked index on click because our design is offset
     slides.forEach((slide, i) =>
-      slide.addEventListener("click", () => loop.toIndex(i - 1, { ease: "power3", duration: 0.725 }))
+      slide.addEventListener("click", () =>
+        loop.toIndex(i - 1, {
+          ease: "power3",
+          duration: 0.725,
+        })
+      )
     );
 
     nextButton.addEventListener("click", () => loop.next({ ease: "power3", duration: 0.725 }));
-    prevButton.addEventListener("click", () => loop.previous({ ease: "power3", duration: 0.725 }));
+    prevButton.addEventListener("click", () =>
+      loop.previous({
+        ease: "power3",
+        duration: 0.725,
+      })
+    );
   });
 }
 
@@ -425,7 +435,9 @@ function horizontalLoop(items, config) {
           )
             .fromTo(
               item,
-              { xPercent: snap(((curX - distanceToLoop + totalWidth) / widths[i]) * 100) },
+              {
+                xPercent: snap(((curX - distanceToLoop + totalWidth) / widths[i]) * 100),
+              },
               {
                 xPercent: xPercents[i],
                 duration: (curX - distanceToLoop + totalWidth - curX) / pixelsPerSecond,
@@ -453,6 +465,7 @@ function horizontalLoop(items, config) {
     populateTimeline();
     populateOffsets();
     window.addEventListener("resize", onResize);
+
     function toIndex(index, vars) {
       vars = vars || {};
       Math.abs(index - curIndex) > length / 2 && (index += index > curIndex ? -length : length); // always go in the shortest direction
@@ -646,8 +659,6 @@ function initModalBasic() {
 
 // Function to handle Vimeo videos in modals
 function initModalVimeoVideos() {
-  console.log("Initializing modal Vimeo videos");
-
   // Find all Vimeo videos in modals
   document.querySelectorAll("[data-modal-name] [data-vimeo-bg-init]").forEach((vimeoElement, index) => {
     const vimeoVideoID = vimeoElement.getAttribute("data-vimeo-video-id");
@@ -655,7 +666,6 @@ function initModalVimeoVideos() {
 
     // Get the modal name
     const modalName = vimeoElement.closest("[data-modal-name]").getAttribute("data-modal-name");
-    console.log(`Setting up Vimeo video in modal: ${modalName}, video ID: ${vimeoVideoID}`);
 
     // Make sure the video has an ID
     if (!vimeoElement.id) {
@@ -695,7 +705,6 @@ function initModalVimeoVideos() {
 
         // Update the src
         iframe.setAttribute("src", url.toString());
-        console.log(`Updated iframe src: ${url.toString()}`);
       } catch (e) {
         console.error("Error updating iframe src:", e);
 
@@ -728,21 +737,16 @@ function initModalVimeoVideos() {
     player.setVolume(1);
 
     // Add loaded event handler
-    player.on("loaded", () => {
-      console.log(`Vimeo player for modal ${modalName} loaded`);
-    });
+    player.on("loaded", () => {});
   });
 
   // Handle play controls that open modals
   document.querySelectorAll('[data-vimeo-control="play"][data-modal-target]').forEach((control) => {
     control.addEventListener("click", function () {
       const modalTarget = this.getAttribute("data-modal-target");
-      console.log(`Play button clicked for modal: ${modalTarget}`);
 
       // Give the modal time to open
       setTimeout(() => {
-        console.log(`Attempting to play video in modal: ${modalTarget}`);
-
         // Find the Vimeo element in the modal
         const modal = document.querySelector(`[data-modal-name="${modalTarget}"]`);
         if (!modal) {
@@ -767,18 +771,14 @@ function initModalVimeoVideos() {
         player
           .setVolume(1)
           .then(() => {
-            console.log("Volume set to 1");
             return player.play();
           })
-          .then(() => {
-            console.log("Video playing");
-          })
+          .then(() => {})
           .catch((error) => {
             console.error("Error playing video:", error);
 
             // Try again with a longer delay if first attempt fails
             setTimeout(() => {
-              console.log("Retrying play...");
               player.play().catch((e) => console.error("Retry failed:", e));
             }, 1000);
           });
@@ -793,7 +793,6 @@ function initModalVimeoVideos() {
 
     control.addEventListener("click", function () {
       const modalName = modal.getAttribute("data-modal-name");
-      console.log(`Pausing video in modal: ${modalName}`);
 
       // Find the Vimeo element in the modal
       const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
@@ -822,7 +821,6 @@ function initModalVimeoVideos() {
       if (!modal) return;
 
       const modalName = modal.getAttribute("data-modal-name");
-      console.log(`Closing modal: ${modalName}`);
 
       // Find the Vimeo element in the modal
       const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
@@ -838,7 +836,6 @@ function initModalVimeoVideos() {
         return;
       }
 
-      console.log(`Pausing video on modal close: ${modalName}`);
       player.pause().catch((error) => {
         console.error("Error pausing video on close:", error);
       });
@@ -851,7 +848,6 @@ function initModalVimeoVideos() {
       // Find any active modals
       document.querySelectorAll('[data-modal-status="active"]').forEach((modal) => {
         const modalName = modal.getAttribute("data-modal-name");
-        console.log(`Escape key pressed, found active modal: ${modalName}`);
 
         // Find the Vimeo element in the modal
         const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
@@ -867,7 +863,6 @@ function initModalVimeoVideos() {
           return;
         }
 
-        console.log(`Pausing video on Escape key: ${modalName}`);
         player.pause().catch((error) => {
           console.error("Error pausing video on escape:", error);
         });
@@ -876,16 +871,12 @@ function initModalVimeoVideos() {
   });
 }
 
-// ANIMATION COMPONENTS
-//import "./ànimation";
-
 // Initialize all components when DOM is loaded
-document.addEventListener("DOMContentLoaded", () => {
-  initCSSMarquee();
-  initVimeoBGVideo();
-  initTabSystem();
-  initNumberCounters();
-  initSliders();
-  initModalBasic();
-  initModalVimeoVideos();
-});
+
+initCSSMarquee();
+initVimeoBGVideo();
+initTabSystem();
+initNumberCounters();
+initSliders();
+initModalBasic();
+initModalVimeoVideos();

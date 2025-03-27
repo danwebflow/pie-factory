@@ -1,3 +1,5 @@
+gsap.registerPlugin(SplitText, CustomEase, ScrambleTextPlugin, Flip, Draggable, InertiaPlugin);
+
 CustomEase.create("osmo-ease", "0.625, 0.05, 0, 1");
 
 let lenis;
@@ -129,14 +131,8 @@ function initSplit(next) {
     });
   }
 
-  // Workaround for splitting lines off screen – seems to work :)
-  gsap.set(".modal-wrap", { display: "block", autoAlpha: 0 });
-
   // Perform the initial split
   splitText(next);
-
-  // After split, immediately reset position
-  gsap.set(".modal-wrap", { display: "none", autoAlpha: 1, clearProps: true });
 
   // Add a debounced resize event listener
   let resizeTimeout;
@@ -158,25 +154,13 @@ function initSplit(next) {
 function initLoad(next) {
   let nav = document.querySelector(".nav-row");
   if (!nav) return;
-  let header = document.querySelector(".header");
-  let topLine = next.querySelector(".line-top");
   let hero = next.querySelector(".section");
   let lines = hero.querySelectorAll(".single-line");
-  let pWrap = hero.querySelector('[data-load-items="wrap-p"]');
-  let buttonWrap = hero.querySelector('[data-load-items="wrap-buttons"]');
-  let heroTextReveal = next.querySelectorAll('[data-load-items="hero"]');
-  let logoLargeReveal = next.querySelectorAll('[data-load-items="logo"]');
-  let logoSmallReveal = document.querySelector(".navbar_logo");
   let revealItems = next.querySelectorAll('[data-load-items="reveal"]');
   let fadeItems = next.querySelectorAll('[data-load-items="fade"]');
-  let pItems, buttons;
-
-  if (pWrap) {
-    pItems = pWrap.querySelectorAll("p");
-  }
-  if (buttonWrap) {
-    buttons = buttonWrap.querySelectorAll(".button");
-  }
+  let progessLinesSidebar = document.querySelector("[data-progress='vertical']"); // height 100%
+  let progessVertical = document.querySelectorAll("[data-progress='vertical-section']"); // height 100%
+  let progessWidth = document.querySelectorAll("[data-progress='width']"); // width 100%
 
   let tl = gsap.timeline({
     defaults: {
@@ -188,14 +172,39 @@ function initLoad(next) {
     },
   });
 
-  tl.set(hero, { autoAlpha: 1 }, 0.5);
-  tl.to(lines, { y: 0, stagger: staggerDefault }, "<")
-    //.to(header, { backgroundColor: "#181818" }, "<")
-    .to(nav, { y: 0 }, "<");
+  tl.set(progessVertical, { height: "0vw" }, 0);
+  tl.set(progessWidth, { width: "0%" }, 0);
+  tl.set(progessLinesSidebar, { height: "0%" }, 0);
 
-  //reveal other items below fold on load
-  if (revealItems.length > 0) {
-    tl.from(
+  tl.set(hero, { autoAlpha: 1 }, 0);
+
+  //Progress Lines Animation
+  tl.to(
+    progessLinesSidebar,
+    {
+      height: "100%",
+    },
+    "<"
+  )
+    .to(
+      progessVertical,
+      {
+        height: "75vw",
+      },
+      "<"
+    )
+    .to(
+      progessWidth,
+      {
+        width: "100%",
+      },
+      "<"
+    );
+
+  tl.to(lines, { y: 0, stagger: staggerDefault }, "<+=0.6") // Synchronize lines animation with progress completion
+    .to(nav, { y: 0 }, "<")
+
+    .from(
       revealItems,
       {
         yPercent: 20,
@@ -204,64 +213,17 @@ function initLoad(next) {
       },
       "<"
     );
-    tl.to(topLine, { width: "100%" }, "<");
-  }
 
-  if (logoLargeReveal.length > 0) {
-    tl.set(logoSmallReveal, { opacity: 0 }, "<");
-    tl.to(
-      logoLargeReveal,
-      {
-        yPercent: -20,
-        autoAlpha: 1,
-        opacity: 1,
-      },
-      "<"
-    );
-    tl.to(
-      logoLargeReveal,
-      {
-        yPercent: 0,
-        autoAlpha: 0,
-        opacity: 0,
-      },
-      ">=0.5"
-    );
-    tl.from(
-      heroTextReveal,
-      {
-        yPercent: 20,
-        autoAlpha: 0,
-        stagger: staggerDefault,
-      },
-      ">=0.5"
-    );
-    tl.to(lines, { y: 0, stagger: staggerDefault }, "<");
-    tl.to(
-      logoSmallReveal,
-      {
-        opacity: 1,
-      },
-      "<"
-    );
-  }
-  //reveal other items below fold on load
-  if (fadeItems.length > 0) {
+  //Fade other items below fold on load
+  if (fadeItems.length > 1) {
     tl.to(
       fadeItems,
       {
         opacity: 1,
         stagger: staggerDefault,
       },
-      "<"
+      "<+=0.4" // Synchronize with revealItems
     );
-  }
-
-  if (pWrap) {
-    tl.to(pItems, { y: 0, stagger: staggerDefault }, 0.3);
-  }
-  if (buttonWrap) {
-    tl.from(buttons, { autoAlpha: 0, duration: 0.6, stagger: staggerDefault }, 0.8);
   }
 }
 
@@ -406,30 +368,8 @@ function initMobileMenu() {
 initMobileMenu();
 
 //
-// Home specific functions:
+// Animation Load Functions
 //
-
-function homeNav() {
-  gsap.set(".nav-line", { autoAlpha: 0 });
-  gsap.set('[data-scrolling-direction="down"] .nav-line', { autoAlpha: 1 });
-
-  ScrollTrigger.create({
-    start: "top -5rem",
-    end: 99999,
-    markers: false,
-    toggleClass: { className: "navbar--scrolled", targets: ".header" },
-  });
-
-  gsap.to(el, {
-    opacity: 1,
-    scrollTrigger: {
-      trigger: el,
-      start: "top -150",
-      scrub: true,
-    },
-    color: "#fff",
-  });
-}
 
 function initGeneral(next) {
   initLenis();
@@ -441,6 +381,5 @@ function initGeneral(next) {
 }
 
 // Initialize functions on page load
-document.addEventListener("DOMContentLoaded", () => {
-  initGeneral(document);
-});
+
+initGeneral(document);
