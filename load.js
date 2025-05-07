@@ -47,123 +47,27 @@ function initCSSMarquee() {
   });
 }
 
-function initVimeoBGVideo() {
-  // Select all elements that have [data-vimeo-bg-init]
-  const vimeoPlayers = document.querySelectorAll("[data-vimeo-bg-init]");
-
-  vimeoPlayers.forEach(function (vimeoElement, index) {
-    // Add Vimeo URL ID to the iframe [src]
-    // Looks like: https://player.vimeo.com/video/1019191082
-    const vimeoVideoID = vimeoElement.getAttribute("data-vimeo-video-id");
-    if (!vimeoVideoID) return;
-    const vimeoVideoURL =
-      `https://player.vimeo.com/video/${vimeoVideoID}?api=1&background=1&autoplay=1&loop=1&muted=1`;
-    vimeoElement.querySelector("iframe").setAttribute("src", vimeoVideoURL);
-
-    // Assign an ID to each element
-    const videoIndexID = "vimeo-player-index-" + index;
-    vimeoElement.setAttribute("id", videoIndexID);
-
-    const iframeID = vimeoElement.id;
-    const player = new Vimeo.Player(iframeID);
-
-    player.setVolume(0);
-
-    player.on("bufferend", function () {
-      vimeoElement.setAttribute("data-vimeo-activated", "true");
-      vimeoElement.setAttribute("data-vimeo-loaded", "true");
-    });
-
-    // Update Aspect Ratio if [data-vimeo-update-size="true"]
-    let videoAspectRatio;
-    if (vimeoElement.getAttribute("data-vimeo-update-size") === "true") {
-      player.getVideoWidth().then(function (width) {
-        player.getVideoHeight().then(function (height) {
-          videoAspectRatio = height / width;
-          const beforeEl = vimeoElement.querySelector(".vimeo-player__before");
-          if (beforeEl) {
-            beforeEl.style.paddingTop = videoAspectRatio * 100 + "%";
-          }
-        });
-      });
-    }
-
-    // Function to adjust video sizing
-    function adjustVideoSizing() {
-      const containerAspectRatio = (vimeoElement.offsetHeight / vimeoElement.offsetWidth) * 100;
-
-      const iframeWrapper = vimeoElement.querySelector(".vimeo-bg__iframe-wrapper");
-      if (iframeWrapper && videoAspectRatio) {
-        if (containerAspectRatio > videoAspectRatio * 100) {
-          iframeWrapper.style.width =
-            `${(containerAspectRatio / (videoAspectRatio * 100)) * 100}%`;
-        } else {
-          iframeWrapper.style.width = "";
-        }
-      }
-    }
-    // Adjust video sizing initially
-    if (vimeoElement.getAttribute("data-vimeo-update-size") === "true") {
-      adjustVideoSizing();
-      player.getVideoWidth().then(function () {
-        player.getVideoHeight().then(function () {
-          adjustVideoSizing();
-        });
-      });
-    } else {
-      adjustVideoSizing();
-    }
-    // Adjust video sizing on resize
-    window.addEventListener("resize", adjustVideoSizing);
-  });
-}
-
 function initTabSystem() {
   const wrappers = document.querySelectorAll('[data-tabs="wrapper"]');
 
   wrappers.forEach((wrapper) => {
     const contentItems = wrapper.querySelectorAll('[data-tabs="content-item"]');
     const visualItems = wrapper.querySelectorAll('[data-tabs="visual-item"]');
-    const autoplay = wrapper.dataset.tabsAutoplay === "true";
-    const autoplayDuration = parseInt(wrapper.dataset.tabsAutoplayDuration) || 5000;
 
     let activeContent = null;
     let activeVisual = null;
     let isAnimating = false;
-    let progressBarTween = null;
-
-    function startProgressBar(index) {
-      if (progressBarTween) progressBarTween.kill();
-      const bar = contentItems[index].querySelector('[data-tabs="item-progress"]');
-      if (!bar) return;
-
-      gsap.set(bar, { scaleX: 0, transformOrigin: "left center" });
-      progressBarTween = gsap.to(bar, {
-        scaleX: 1,
-        duration: autoplayDuration / 1000,
-        ease: "power1.inOut",
-        onComplete: () => {
-          if (!isAnimating) {
-            const nextIndex = (index + 1) % contentItems.length;
-            switchTab(nextIndex);
-          }
-        },
-      });
-    }
 
     function switchTab(index) {
       if (isAnimating || contentItems[index] === activeContent) return;
 
       isAnimating = true;
-      if (progressBarTween) progressBarTween.kill();
 
       const outgoingContent = activeContent;
       const outgoingVisual = activeVisual;
-      const outgoingBar = outgoingContent?.querySelector('[data-tabs="item-progress"]');
 
       const incomingContent = contentItems[index];
       const incomingVisual = visualItems[index];
-      const incomingBar = incomingContent.querySelector('[data-tabs="item-progress"]');
 
       outgoingContent?.classList.remove("active");
       outgoingVisual?.classList.remove("active");
@@ -171,27 +75,29 @@ function initTabSystem() {
       incomingVisual.classList.add("active");
 
       const tl = gsap.timeline({
-        defaults: { duration: 0.65, ease: "power3" },
+        defaults: {
+          duration: 0.3,
+          ease: "power3"
+        }, // Reduced duration for quicker transitions
         onComplete: () => {
           activeContent = incomingContent;
           activeVisual = incomingVisual;
           isAnimating = false;
-          if (autoplay) startProgressBar(index);
         },
       });
 
       if (outgoingContent) {
-        tl.set(outgoingBar, { transformOrigin: "right center" })
-          .to(outgoingBar, { scaleX: 0, duration: 0.3 }, 0)
-          .to(outgoingVisual, { autoAlpha: 0, xPercent: 3 }, 0)
+        tl.to(outgoingVisual, { autoAlpha: 0, xPercent: 3 }, 0)
           .to(outgoingContent.querySelector('[data-tabs="item-details"]'), { height: 0 }, 0);
       }
 
       tl.fromTo(incomingVisual, { autoAlpha: 0, xPercent: 3 }, { autoAlpha: 1, xPercent: 0 },
-          0.3)
+          0.15) // Reduced delay
         .fromTo(incomingContent.querySelector(
-          '[data-tabs="item-details"]'), { height: 0 }, { height: "auto" }, 0)
-        .set(incomingBar, { scaleX: 0, transformOrigin: "left center" }, 0);
+          '[data-tabs="item-details"]'), { height: 0 }, { height: "auto" }, 0);
+
+      // Reset isAnimating flag immediately after setting up animations
+      isAnimating = true;
     }
 
     switchTab(0);
@@ -253,8 +159,8 @@ function initNumberCounters() {
 
           gsap.to(counter, {
             value: targetNumber,
-            duration: 2,
-            ease: "power2.out",
+            duration: 1.25, // Reduced duration for faster animation
+            ease: "expo.out",
             onUpdate: function () {
               const currentValue = Math.round(counter.value);
               element.textContent = prefix + formatNumber(currentValue, originalText) +
@@ -272,7 +178,30 @@ function initNumberCounters() {
 }
 
 // Register GSAP plugins
-gsap.registerPlugin(SplitText, CustomEase, ScrambleTextPlugin, Flip, Draggable, InertiaPlugin);
+gsap.registerPlugin(SplitText, CustomEase, ScrambleTextPlugin, Flip, Draggable, InertiaPlugin,
+  ScrollTrigger);
+
+// GSAP and SplitType setup
+
+const intro = document.getElementById('section-introduction');
+const blocks = intro.querySelectorAll('.reveal-type');
+
+blocks.forEach((el) => {
+  const split = new SplitType(el, { types: ['chars', 'words'] });
+  gsap.to(split.chars, {
+    scrollTrigger: {
+      trigger: el,
+      start: 'top 80%',
+      end: 'bottom 50%',
+      scrub: true,
+      markers: false,
+      invalidateOnRefresh: true
+    },
+    opacity: 1,
+    stagger: 0.1,
+    ease: 'none'
+  });
+});
 
 function initSliders() {
   // Find all sections that might contain sliders
@@ -316,14 +245,14 @@ function initSliders() {
     });
 
     // Similar to above, we subtract 1 from our clicked index on click because our design is offset
-    slides.forEach((slide, i) =>
-      slide.addEventListener("click", () =>
-        loop.toIndex(i - 1, {
-          ease: "power3",
-          duration: 0.725,
-        })
-      )
-    );
+    // slides.forEach((slide, i) =>
+    //   slide.addEventListener("click", () =>
+    //     loop.toIndex(i - 1, {
+    //       ease: "power3",
+    //       duration: 0.725,
+    //     })
+    //   )
+    // );
 
     nextButton.addEventListener("click", () => loop.next({ ease: "power3", duration: 0.725 }));
     prevButton.addEventListener("click", () =>
@@ -673,221 +602,6 @@ function initModalBasic() {
   };
 }
 
-// Function to handle Vimeo videos in modals
-function initModalVimeoVideos() {
-  // Find all Vimeo videos in modals
-  document.querySelectorAll("[data-modal-name] [data-vimeo-bg-init]").forEach((vimeoElement,
-    index) => {
-    const vimeoVideoID = vimeoElement.getAttribute("data-vimeo-video-id");
-    if (!vimeoVideoID) return;
-
-    // Get the modal name
-    const modalName = vimeoElement.closest("[data-modal-name]").getAttribute("data-modal-name");
-
-    // Make sure the video has an ID
-    if (!vimeoElement.id) {
-      vimeoElement.id = `modal-vimeo-${modalName}-${index}`;
-    }
-
-    // Update the iframe src to ensure it's not set to background mode and has audio enabled
-    const iframe = vimeoElement.querySelector("iframe");
-    if (iframe) {
-      // Add a class to hide controls
-      iframe.classList.add("vimeo-no-controls");
-
-      // Add CSS to hide controls if not already added
-      if (!document.getElementById("vimeo-controls-css")) {
-        const style = document.createElement("style");
-        style.id = "vimeo-controls-css";
-        style.textContent = `
-            .vimeo-no-controls {
-              pointer-events: none !important;
-            }
-            /* Additional CSS to hide controls */
-            .vimeo-player__controls {
-              display: none !important;
-            }
-          `;
-        document.head.appendChild(style);
-      }
-      // Parse the current URL
-      try {
-        const url = new URL(iframe.getAttribute("src"));
-
-        // Set the correct parameters for modal videos
-        url.searchParams.set("api", "1");
-        url.searchParams.set("background", "0");
-        url.searchParams.set("muted", "0");
-        url.searchParams.set("controls", "0"); // Hide Vimeo's native controls
-
-        // Update the src
-        iframe.setAttribute("src", url.toString());
-      } catch (e) {
-        console.error("Error updating iframe src:", e);
-
-        // Fallback to string replacement if URL parsing fails
-        let src = iframe.getAttribute("src");
-        // Remove background=1 and muted=1 parameters if present
-        src = src.replace("background=1", "background=0");
-        src = src.replace("muted=1", "muted=0");
-        // Make sure we have the right parameters for modal videos
-        if (!src.includes("background=0")) {
-          src = src.includes("?") ? src + "&background=0" : src + "?background=0";
-        }
-        if (!src.includes("muted=0")) {
-          src = src + "&muted=0";
-        }
-        if (!src.includes("controls=0")) {
-          src = src + "&controls=0";
-        }
-        iframe.setAttribute("src", src);
-      }
-    }
-
-    // Get the player instance
-    const player = new Vimeo.Player(vimeoElement.id);
-
-    // Store the player reference in the global object
-    window.vimeoPlayers[vimeoElement.id] = player;
-
-    // Ensure volume is set to 1 for modal videos
-    player.setVolume(1);
-
-    // Add loaded event handler
-    player.on("loaded", () => {});
-  });
-
-  // Handle play controls that open modals
-  document.querySelectorAll('[data-vimeo-control="play"][data-modal-target]').forEach((control) => {
-    control.addEventListener("click", function () {
-      const modalTarget = this.getAttribute("data-modal-target");
-
-      // Give the modal time to open
-      setTimeout(() => {
-        // Find the Vimeo element in the modal
-        const modal = document.querySelector(`[data-modal-name="${modalTarget}"]`);
-        if (!modal) {
-          console.warn(`Modal not found: ${modalTarget}`);
-          return;
-        }
-
-        const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
-        if (!vimeoElement || !vimeoElement.id) {
-          console.warn(`Vimeo element not found in modal: ${modalTarget}`);
-          return;
-        }
-
-        // Get the player from the global object
-        const player = window.vimeoPlayers[vimeoElement.id];
-        if (!player) {
-          console.warn(`Player not found for: ${vimeoElement.id}`);
-          return;
-        }
-
-        // Make sure volume is set to 1 (with audio) and play
-        player
-          .setVolume(1)
-          .then(() => {
-            return player.play();
-          })
-          .then(() => {})
-          .catch((error) => {
-            console.error("Error playing video:", error);
-
-            // Try again with a longer delay if first attempt fails
-            setTimeout(() => {
-              player.play().catch((e) => console.error("Retry failed:", e));
-            }, 1000);
-          });
-      }, 800); // Increased delay to ensure modal is fully visible
-    });
-  });
-
-  // Handle pause controls in modals
-  document.querySelectorAll('[data-modal-name] [data-vimeo-control="pause"]').forEach((control) => {
-    const modal = control.closest("[data-modal-name]");
-    if (!modal) return;
-
-    control.addEventListener("click", function () {
-      const modalName = modal.getAttribute("data-modal-name");
-
-      // Find the Vimeo element in the modal
-      const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
-      if (!vimeoElement || !vimeoElement.id) {
-        console.warn(`Vimeo element not found in modal: ${modalName}`);
-        return;
-      }
-
-      // Get the player from the global object
-      const player = window.vimeoPlayers[vimeoElement.id];
-      if (!player) {
-        console.warn(`Player not found for: ${vimeoElement.id}`);
-        return;
-      }
-
-      player.pause().catch((error) => {
-        console.error("Error pausing video:", error);
-      });
-    });
-  });
-
-  // Pause videos when modals are closed
-  document.querySelectorAll("[data-modal-close]").forEach((closeBtn) => {
-    closeBtn.addEventListener("click", function () {
-      const modal = this.closest("[data-modal-name]");
-      if (!modal) return;
-
-      const modalName = modal.getAttribute("data-modal-name");
-
-      // Find the Vimeo element in the modal
-      const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
-      if (!vimeoElement || !vimeoElement.id) {
-        console.warn(`Vimeo element not found in modal: ${modalName}`);
-        return;
-      }
-
-      // Get the player from the global object
-      const player = window.vimeoPlayers[vimeoElement.id];
-      if (!player) {
-        console.warn(`Player not found for: ${vimeoElement.id}`);
-        return;
-      }
-
-      player.pause().catch((error) => {
-        console.error("Error pausing video on close:", error);
-      });
-    });
-  });
-
-  // Pause videos when Escape key is pressed
-  document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape") {
-      // Find any active modals
-      document.querySelectorAll('[data-modal-status="active"]').forEach((modal) => {
-        const modalName = modal.getAttribute("data-modal-name");
-
-        // Find the Vimeo element in the modal
-        const vimeoElement = modal.querySelector("[data-vimeo-bg-init]");
-        if (!vimeoElement || !vimeoElement.id) {
-          console.warn(`Vimeo element not found in modal: ${modalName}`);
-          return;
-        }
-
-        // Get the player from the global object
-        const player = window.vimeoPlayers[vimeoElement.id];
-        if (!player) {
-          console.warn(`Player not found for: ${vimeoElement.id}`);
-          return;
-        }
-
-        player.pause().catch((error) => {
-          console.error("Error pausing video on escape:", error);
-        });
-      });
-    }
-  });
-}
-
 function initPlayPauseVideoScroll() {
   const videos = gsap.utils.toArray('[data-video="playpause"]');
 
@@ -907,13 +621,87 @@ function initPlayPauseVideoScroll() {
   });
 }
 
+function initModalHTML5Videos() {
+  // Find all HTML5 videos in modals
+  document.querySelectorAll("[data-modal-name] video[data-html5-bg-init]").forEach((videoElement,
+    index) => {
+    const modalName = videoElement.closest("[data-modal-name]").getAttribute("data-modal-name");
+
+    // Ensure the video has an ID
+    if (!videoElement.id) {
+      videoElement.id = `modal-html5-${modalName}-${index}`;
+    }
+
+    // Handle play controls that open modals
+    document.querySelectorAll(`[data-html5-control="play"][data-modal-target="${modalName}"]`)
+      .forEach((control) => {
+        control.addEventListener("click", function () {
+          setTimeout(() => {
+            videoElement.muted = false; // Unmute the video
+            videoElement.play().catch((error) => {
+              console.error("Error playing video:", error);
+            });
+          }, 800); // Delay to ensure modal is fully visible
+        });
+      });
+
+    // Handle pause controls in modals
+    document.querySelectorAll(`[data-modal-name="${modalName}"] [data-html5-control="pause"]`)
+      .forEach((control) => {
+        control.addEventListener("click", function () {
+          videoElement.pause();
+        });
+      });
+
+    // Pause videos when modals are closed
+    document.querySelectorAll("[data-modal-close]").forEach((closeBtn) => {
+      closeBtn.addEventListener("click", function () {
+        videoElement.pause();
+      });
+    });
+
+    // Pause videos when Escape key is pressed
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        videoElement.pause();
+      }
+    });
+  });
+}
+
+function initVideoLoad() {
+  const loadVideo = document.querySelector('#video-load');
+
+  if (!loadVideo) return;
+
+  loadVideo.play()
+}
+
+function initVideoModal() {
+  const loadVideo = document.querySelector('#video-modal');
+
+  if (!loadVideo) return;
+
+  loadVideo.play()
+}
+
+function initTabsMobile() {
+  const activeTabLoad = document.querySelectorAll('[accordion=active]');
+
+  if (activeTabLoad.length === 0) return;
+
+  activeTabLoad.forEach(tab => {
+    tab.click();
+  });
+}
+
 // Initialize all components when DOM is loaded
 
 initCSSMarquee();
-initPlayPauseVideoScroll();
-initVimeoBGVideo();
+initVideoLoad();
 initTabSystem();
 initNumberCounters();
 initSliders();
+initModalHTML5Videos();
 initModalBasic();
-initModalVimeoVideos();
+initTabsMobile()
